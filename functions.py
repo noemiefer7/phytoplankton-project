@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 #Functions 
 
@@ -83,46 +85,58 @@ def count (variety_list, df_identification):
 
 
 #This function is used to calculate the average volume of each phytoplankton
-def average_volume(variety_list, df_count,df_merged):
-    v=0
+def average(variety_list, df_count,df_merged,quantity):
+    c=0
     c_variety=0
-    biovolume=[]
+    liste=[]
     for i in df_count.iloc[:,0]:
         c_merged=0
         for j in df_merged.iloc[:,1]:
             if i==j:
-                v+=df_merged.iloc[c_merged,3]
-            
+                c+=df_merged.loc[c_merged,quantity]
             c_merged=c_merged+1
-            
         if df_count.iloc[c_variety,1]!=0:
-            v/=df_count.iloc[c_variety,1]  
+            c/=df_count.iloc[c_variety,1]  
         else:
-            v=0
-            
-        biovolume.append(v)
+            c=0
+        liste.append(c)
         c_variety+=1
-    df_volume=pd.DataFrame({'Variety':variety_list,'Biovolume':biovolume})
+    df_average=pd.DataFrame({'Variety':variety_list, quantity:liste})
    
-    return df_volume
+    return df_average
 
-#This function is used to calculate the average area of each phytoplankton
-def average_area(variety_list, df_count,df_merged):
-    a=0
-    c_variety=0
-    area=[]
-    for i in df_count.iloc[:,0]:
-        c_merged=0
-        for j in df_merged.iloc[:,1]:
-            if i==j:
-                a+=df_merged.iloc[c_merged,2]
-            c_merged+=1
-        if df_count.iloc[c_variety,1]!=0:
-            a/=df_count.iloc[c_variety,1]
-        else:
-            a=0
-        area.append(a)
-        c_variety+=1
-    df_area=pd.DataFrame({'Variety':variety_list,'Area':area})
-    return df_area
 
+#Putting the numpy arrays of size (18,155,2) into a dataframe of size (155,19)
+def changing_type (name,day):
+    [N,L,C]=np.shape(name)
+    count_column=1
+    df_name=pd.DataFrame({'Variety':name[0,:,0]})
+    for dataframe in name:
+        df_name.insert(count_column,day[count_column-1],dataframe[:,1])
+        count_column+=1
+    return df_name,L
+
+
+#This function is used to group the phytoplanktons based on one feature
+def features (quantity,autoclass, features, autoclass_path,features_path):
+    liste=[]  
+    l=len(autoclass)       
+    for i in range(l):
+        [df_identification,variety_list]=association(autoclass_path+autoclass[i])
+        df_merged=merge(df_identification,features_path+features[i])
+        df_count=count(variety_list,df_identification)
+        df_features=average(variety_list, df_count,df_merged,quantity)
+        liste.append(df_features)
+    return liste
+
+def plot_features(day, L, df,quantity):
+    default_x_ticks = range(len(day))     
+    os.mkdir('average_'+quantity)
+    for i in range (L):
+        plt.figure()    
+        plt.plot(default_x_ticks,df.iloc[i,1:19] )
+        plt.xticks(default_x_ticks, day,rotation=45)
+        plt.title('Average'+ quantity+' of '+df.iloc[i,0])
+        plt.xlabel('Days')
+        plt.ylabel(quantity)
+        plt.savefig('average_'+quantity+'/'+df.iloc[i,0]+'_average_'+quantity)
